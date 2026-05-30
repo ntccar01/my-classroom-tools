@@ -1,0 +1,22 @@
+# Google Drive system files
+desktop.ini
+*.tmp
+~$*
+
+# Sensitive data
+.env
+*.key
+credentials.*
+service-account*.json
+
+# Claude Code local settings
+.claude/
+
+# Node.js
+node_modules/
+package-lock.json
+
+# Build output
+dist/
+build/
+.cache/
