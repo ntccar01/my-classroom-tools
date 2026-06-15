@@ -1,22 +1,16 @@
-# Google Drive system files
+# Google Drive 系統檔
 desktop.ini
 *.tmp
 ~$*
 
-# Sensitive data
+# 敏感資料
 .env
 *.key
 credentials.*
-service-account*.json
 
-# Claude Code local settings
+# Claude Code 本地設定（含 permissions、可能記錄 token，絕不上雲）
 .claude/
 
 # Node.js
 node_modules/
 package-lock.json
-
-# Build output
-dist/
-build/
-.cache/
