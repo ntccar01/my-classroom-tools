@@ -15,10 +15,11 @@
 - 🔥 Firebase 專案：`my-teaching-tools`（或你建的，資料的家）
 
 ## 工具清單
-- **即時文字雲**（v1）— `tools/wordcloud/` 目錄
-  - `index.html`：展示頁（即時更新 + 嵌入簡報）
-  - `submit.html`：學生提交頁（手機友好）
+- **班級互動工具**（v2）— `tools/wordcloud/` 目錄
+  - `index.html`：展示頁（文字雲 + 投票設定/結果，Tab 切換）
+  - `submit.html`：學生頁（關鍵字提交 + 投票，Tab 切換）
   - 網址：https://ntccar01.github.io/my-classroom-tools/tools/wordcloud/
+  - Firestore 集合：`wordcloud_words`、`active_poll`、`votes`
 
 ## 工作注意事項
 - 學生資料一律去識別化（只用座號 + 班級代號）
