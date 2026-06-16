@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>即時文字雲</title>
+  <title>班級互動工具</title>
   <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore-compat.js"></script>
   <style>
@@ -13,26 +13,48 @@
       color: #eee;
       font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
       min-height: 100vh;
+    }
+    .header {
+      text-align: center;
+      padding: 20px 15px 10px;
+    }
+    .header h1 { font-size: 1.8rem; color: #f39c12; }
+    .header p { color: #888; font-size: 0.9rem; margin-top: 4px; }
+
+    .tabs {
       display: flex;
-      flex-direction: column;
-      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      margin: 15px auto;
+      max-width: 400px;
     }
-    h1 {
-      font-size: 2rem;
-      margin: 20px 0 10px;
-      color: #f39c12;
+    .tab {
+      flex: 1;
+      padding: 10px 20px;
       text-align: center;
-    }
-    .subtitle {
+      cursor: pointer;
+      border: none;
+      background: #16213e;
       color: #888;
-      font-size: 0.9rem;
-      margin-bottom: 15px;
-      text-align: center;
+      font-size: 1rem;
+      border-radius: 8px 8px 0 0;
+      transition: all 0.3s;
     }
+    .tab.active {
+      background: #0f3460;
+      color: #f39c12;
+      font-weight: bold;
+    }
+    .tab:hover { background: #0f3460; color: #ddd; }
+
+    .panel { display: none; padding: 10px 15px; }
+    .panel.active { display: block; }
+
+    /* === 文字雲 === */
     #wordcloud {
-      width: 90%;
+      width: 100%;
       max-width: 900px;
-      min-height: 400px;
+      min-height: 350px;
       background: #16213e;
       border-radius: 12px;
       padding: 30px;
@@ -53,119 +75,174 @@
       transition: all 0.3s ease;
       animation: fadeIn 0.5s ease;
     }
-    .word-item:hover {
-      transform: scale(1.1);
-      background: rgba(243, 156, 18, 0.15);
+    .word-item:hover { transform: scale(1.1); background: rgba(243,156,18,0.15); }
+    @keyframes fadeIn { from { opacity:0; transform:scale(0.5); } to { opacity:1; transform:scale(1); } }
+
+    .wc-input-area {
+      display: flex; gap: 10px; margin: 15px auto;
+      width: 100%; max-width: 500px;
     }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: scale(0.5); }
-      to { opacity: 1; transform: scale(1); }
+    .wc-input-area input {
+      flex: 1; padding: 12px 18px; border: 2px solid #333; border-radius: 8px;
+      background: #16213e; color: #eee; font-size: 1rem; outline: none;
     }
-    .input-area {
-      display: flex;
-      gap: 10px;
-      margin: 20px auto;
-      width: 90%;
-      max-width: 500px;
+    .wc-input-area input:focus { border-color: #f39c12; }
+    .wc-input-area button {
+      padding: 12px 24px; background: #f39c12; color: #1a1a2e;
+      border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer;
     }
-    .input-area input {
-      flex: 1;
-      padding: 12px 18px;
-      border: 2px solid #333;
-      border-radius: 8px;
-      background: #16213e;
-      color: #eee;
-      font-size: 1rem;
-      outline: none;
-      transition: border 0.3s;
-    }
-    .input-area input:focus {
-      border-color: #f39c12;
-    }
-    .input-area button {
-      padding: 12px 24px;
-      background: #f39c12;
-      color: #1a1a2e;
-      border: none;
-      border-radius: 8px;
-      font-size: 1rem;
-      font-weight: bold;
-      cursor: pointer;
-      transition: background 0.3s;
-    }
-    .input-area button:hover {
-      background: #e67e22;
-    }
+    .wc-input-area button:hover { background: #e67e22; }
     .stats {
-      display: flex;
-      gap: 30px;
-      justify-content: center;
-      margin: 10px 0;
-      color: #888;
-      font-size: 0.9rem;
+      display: flex; gap: 20px; justify-content: center; margin: 10px 0;
+      color: #888; font-size: 0.9rem;
     }
-    .stats span {
-      color: #f39c12;
-      font-weight: bold;
-    }
+    .stats span { color: #f39c12; font-weight: bold; }
     .clear-btn {
-      padding: 6px 16px;
-      background: #e74c3c;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.8rem;
-      margin-left: 10px;
+      padding: 4px 12px; background: #e74c3c; color: white;
+      border: none; border-radius: 4px; cursor: pointer; font-size: 0.75rem;
     }
-    .clear-btn:hover {
-      background: #c0392b;
+
+    /* === 投票 === */
+    .poll-setup {
+      max-width: 600px; margin: 0 auto 20px;
+      background: #16213e; border-radius: 12px; padding: 20px;
     }
-    .embed-notice {
-      margin: 20px 0;
-      padding: 12px 20px;
-      background: #0f3460;
-      border-radius: 8px;
-      font-size: 0.85rem;
-      color: #aaa;
-      text-align: center;
+    .poll-setup h3 { color: #f39c12; margin-bottom: 12px; }
+    .poll-setup input, .poll-setup textarea {
+      width: 100%; padding: 10px 14px; margin-bottom: 8px;
+      background: #1a1a2e; border: 1px solid #333; border-radius: 6px;
+      color: #eee; font-size: 0.95rem; outline: none;
     }
-    .embed-notice code {
-      background: #1a1a2e;
-      padding: 2px 8px;
-      border-radius: 4px;
-      color: #f39c12;
+    .poll-setup input:focus { border-color: #f39c12; }
+    .option-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+    .option-row input { flex: 1; margin-bottom: 0; }
+    .option-row .remove-opt {
+      background: #e74c3c; color: white; border: none; border-radius: 4px;
+      width: 30px; height: 30px; cursor: pointer; font-size: 1.1rem;
     }
+    .add-opt-btn {
+      background: none; border: 1px dashed #555; color: #888;
+      padding: 8px; border-radius: 6px; cursor: pointer; width: 100%; margin-bottom: 10px;
+    }
+    .add-opt-btn:hover { border-color: #f39c12; color: #f39c12; }
+    .poll-setup .start-btn {
+      width: 100%; padding: 12px; background: #2ecc71; color: #1a1a2e;
+      border: none; border-radius: 8px; font-size: 1.1rem; font-weight: bold; cursor: pointer;
+    }
+    .poll-setup .start-btn:hover { background: #27ae60; }
+    .poll-setup .stop-btn {
+      width: 100%; padding: 12px; background: #e74c3c; color: white;
+      border: none; border-radius: 8px; font-size: 1.1rem; font-weight: bold; cursor: pointer;
+    }
+
+    .poll-results {
+      max-width: 600px; margin: 0 auto;
+      background: #16213e; border-radius: 12px; padding: 20px;
+    }
+    .poll-results h2 { color: #f39c12; margin-bottom: 4px; font-size: 1.3rem; }
+    .poll-results .poll-question { color: #ccc; margin-bottom: 20px; font-size: 1.1rem; }
+    .poll-results .total-votes { color: #888; font-size: 0.85rem; margin-bottom: 15px; }
+    .bar-row {
+      display: flex; align-items: center; margin-bottom: 10px;
+      animation: slideIn 0.5s ease;
+    }
+    @keyframes slideIn { from { opacity:0; transform:translateX(-20px); } to { opacity:1; transform:translateX(0); } }
+    .bar-label { width: 100px; text-align: right; padding-right: 12px; font-size: 0.95rem; flex-shrink: 0; }
+    .bar-track { flex: 1; height: 36px; background: #1a1a2e; border-radius: 6px; overflow: hidden; position: relative; }
+    .bar-fill {
+      height: 100%; border-radius: 6px; transition: width 0.5s ease;
+      display: flex; align-items: center; padding-left: 10px;
+      font-weight: bold; font-size: 0.85rem; min-width: 30px;
+    }
+    .bar-count { margin-left: 10px; font-size: 0.85rem; color: #888; width: 40px; flex-shrink: 0; }
+
+    .no-poll { color: #666; text-align: center; padding: 40px; }
+
+    .embed-note {
+      margin: 20px auto; padding: 12px 20px; background: #0f3460;
+      border-radius: 8px; font-size: 0.8rem; color: #aaa;
+      text-align: center; max-width: 700px;
+    }
+    .embed-note code { background: #1a1a2e; padding: 2px 6px; border-radius: 4px; color: #f39c12; }
+
+    .submit-link {
+      display: inline-block; margin-top: 10px; padding: 8px 20px;
+      background: #3498db; color: white; text-decoration: none;
+      border-radius: 6px; font-size: 0.9rem;
+    }
+    .submit-link:hover { background: #2980b9; }
+
     @media (max-width: 600px) {
-      h1 { font-size: 1.5rem; }
-      #wordcloud { min-height: 300px; padding: 15px; gap: 8px; }
-      .word-item { padding: 4px 10px; }
+      .header h1 { font-size: 1.4rem; }
+      #wordcloud { min-height: 250px; padding: 15px; gap: 8px; }
+      .bar-label { width: 60px; font-size: 0.8rem; }
     }
   </style>
 </head>
 <body>
-  <h1>☁️ 即時文字雲</h1>
-  <p class="subtitle">學生用手機掃 QR Code 提交關鍵字，這裡即時更新</p>
-
-  <div class="stats">
-    <div>總字數：<span id="totalCount">0</span></div>
-    <div>不重複：<span id="uniqueCount">0</span></div>
-    <button class="clear-btn" onclick="clearAll()">🗑 清除全部</button>
+  <div class="header">
+    <h1>🎯 班級互動工具</h1>
+    <p>文字雲 × 即時投票</p>
+    <a class="submit-link" id="submitPageLink" target="_blank">📱 學生互動頁（新分頁開啟）</a>
   </div>
 
-  <div id="wordcloud">
-    <p style="color:#666;">等待資料中...</p>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('wordcloud')">☁️ 文字雲</button>
+    <button class="tab" onclick="switchTab('voting')">📊 即時投票</button>
   </div>
 
-  <div class="input-area">
-    <input type="text" id="wordInput" placeholder="輸入關鍵字..." maxlength="20">
-    <button onclick="addWord()">送出</button>
+  <!-- 文字雲面板 -->
+  <div id="panel-wordcloud" class="panel active">
+    <div style="max-width:900px; margin:0 auto;">
+      <div class="stats">
+        <div>總字數：<span id="totalCount">0</span></div>
+        <div>不重複：<span id="uniqueCount">0</span></div>
+        <button class="clear-btn" onclick="clearWords()">🗑 清除</button>
+      </div>
+      <div id="wordcloud"><p style="color:#666;">等待資料中...</p></div>
+      <div class="wc-input-area">
+        <input type="text" id="wordInput" placeholder="輸入關鍵字..." maxlength="20">
+        <button onclick="addWord()">送出</button>
+      </div>
+    </div>
   </div>
 
-  <div class="embed-notice">
+  <!-- 投票面板 -->
+  <div id="panel-voting" class="panel">
+    <div class="poll-setup" id="pollSetup">
+      <h3>⚙️ 設定投票</h3>
+      <input type="text" id="pollQuestion" placeholder="請輸入投票問題..." value="你最喜歡哪個主題？">
+      <div id="optionsContainer">
+        <div class="option-row">
+          <input type="text" class="opt-input" placeholder="選項 1" value="選項A">
+          <button class="remove-opt" onclick="removeOption(this)">✕</button>
+        </div>
+        <div class="option-row">
+          <input type="text" class="opt-input" placeholder="選項 2" value="選項B">
+          <button class="remove-opt" onclick="removeOption(this)">✕</button>
+        </div>
+        <div class="option-row">
+          <input type="text" class="opt-input" placeholder="選項 3" value="選項C">
+          <button class="remove-opt" onclick="removeOption(this)">✕</button>
+        </div>
+      </div>
+      <button class="add-opt-btn" onclick="addOption()">＋ 新增選項</button>
+      <button class="start-btn" id="startPollBtn" onclick="startPoll()">📢 開始投票</button>
+      <button class="stop-btn" id="stopPollBtn" onclick="stopPoll()" style="display:none;">⏹ 結束投票</button>
+    </div>
+
+    <div class="poll-results" id="pollResults" style="display:none;">
+      <h2>📊 投票結果</h2>
+      <div class="poll-question" id="activeQuestion"></div>
+      <div class="total-votes">總投票數：<span id="voteTotalCount">0</span></div>
+      <div id="voteBars"></div>
+    </div>
+    <div class="no-poll" id="noPollMsg">目前沒有進行中的投票</div>
+  </div>
+
+  <div class="embed-note">
     🔗 學生提交網址：<code id="submitUrl">載入中...</code>
-    <br>
-    📋 嵌入簡報：<code id="embedCode">載入中...</code>
+    <br>📋 嵌入簡報：<code id="embedCode">載入中...</code>
   </div>
 
   <script>
@@ -180,39 +257,38 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
+    // ===== Tab 切換 =====
+    function switchTab(name) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.querySelector(`.tab[onclick*="${name}"]`).classList.add('active');
+      document.getElementById(`panel-${name}`).classList.add('active');
+    }
+
+    // ===== 文字雲 =====
     const COLORS = ['#f39c12','#e74c3c','#2ecc71','#3498db','#9b59b6','#1abc9c','#e67e22','#f1c40f'];
     const SIZES = [14,18,22,26,32,38,46];
-
     let wordMap = new Map();
 
     function getWordSize(count) {
       const maxCount = Math.max(...wordMap.values(), 1);
-      const ratio = count / maxCount;
-      const idx = Math.min(Math.floor(ratio * SIZES.length), SIZES.length - 1);
-      return SIZES[idx];
+      return SIZES[Math.min(Math.floor((count/maxCount) * SIZES.length), SIZES.length-1)];
     }
-
-    function getWordColor(word) {
-      let hash = 0;
-      for (let i = 0; i < word.length; i++) {
-        hash = word.charCodeAt(i) + ((hash << 5) - hash);
-      }
-      return COLORS[Math.abs(hash) % COLORS.length];
+    function getWordColor(w) {
+      let h = 0;
+      for (let i = 0; i < w.length; i++) h = w.charCodeAt(i) + ((h<<5)-h);
+      return COLORS[Math.abs(h)%COLORS.length];
     }
-
     function renderWordCloud() {
-      const container = document.getElementById('wordcloud');
-      container.innerHTML = '';
-
+      const c = document.getElementById('wordcloud');
+      c.innerHTML = '';
       if (wordMap.size === 0) {
-        container.innerHTML = '<p style="color:#666;">還沒有資料，請學生提交關鍵字 ✨</p>';
+        c.innerHTML = '<p style="color:#666;">還沒有資料，請學生提交關鍵字 ✨</p>';
         document.getElementById('totalCount').textContent = '0';
         document.getElementById('uniqueCount').textContent = '0';
         return;
       }
-
-      const sorted = [...wordMap.entries()].sort((a, b) => b[1] - a[1]);
-
+      const sorted = [...wordMap.entries()].sort((a,b) => b[1]-a[1]);
       sorted.forEach(([word, count]) => {
         const el = document.createElement('span');
         el.className = 'word-item';
@@ -220,56 +296,146 @@
         el.style.color = getWordColor(word);
         el.textContent = word;
         el.title = `${word}: ${count} 次`;
-        container.appendChild(el);
+        c.appendChild(el);
       });
-
-      const total = sorted.reduce((sum, [,c]) => sum + c, 0);
-      document.getElementById('totalCount').textContent = total;
+      document.getElementById('totalCount').textContent = sorted.reduce((s, [,c]) => s+c, 0);
       document.getElementById('uniqueCount').textContent = sorted.length;
     }
-
     function addWord() {
-      const input = document.getElementById('wordInput');
-      const word = input.value.trim();
-      if (!word) return;
-
-      db.collection('wordcloud_words').add({
-        word: word,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      input.value = '';
+      const v = document.getElementById('wordInput').value.trim();
+      if (!v) return;
+      db.collection('wordcloud_words').add({ word: v, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+      document.getElementById('wordInput').value = '';
     }
-
-    document.getElementById('wordInput').addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') addWord();
+    document.getElementById('wordInput').addEventListener('keypress', e => { if (e.key === 'Enter') addWord(); });
+    function clearWords() {
+      if (!confirm('確定清除所有文字雲資料？')) return;
+      db.collection('wordcloud_words').get().then(s => {
+        const b = db.batch();
+        s.docs.forEach(d => b.delete(d.ref));
+        return b.commit();
+      });
+    }
+    db.collection('wordcloud_words').orderBy('timestamp','asc').onSnapshot(s => {
+      wordMap.clear();
+      s.forEach(d => { const w = d.data().word; if (w) wordMap.set(w.trim(), (wordMap.get(w.trim())||0)+1); });
+      renderWordCloud();
     });
 
-    function clearAll() {
-      if (!confirm('確定清除所有文字雲資料？')) return;
-      db.collection('wordcloud_words').get().then(snapshot => {
-        const batch = db.batch();
-        snapshot.docs.forEach(doc => batch.delete(doc.ref));
-        return batch.commit();
+    // ===== 投票 =====
+    let currentPollId = null;
+    let pollListener = null;
+    let votesListener = null;
+
+    function addOption() {
+      const container = document.getElementById('optionsContainer');
+      const div = document.createElement('div');
+      div.className = 'option-row';
+      const idx = container.children.length + 1;
+      div.innerHTML = `
+        <input type="text" class="opt-input" placeholder="選項 ${idx}" value="選項${String.fromCharCode(64+idx)}">
+        <button class="remove-opt" onclick="removeOption(this)">✕</button>`;
+      container.appendChild(div);
+    }
+    function removeOption(btn) {
+      const container = document.getElementById('optionsContainer');
+      if (container.children.length <= 2) return;
+      btn.parentElement.remove();
+    }
+
+    function startPoll() {
+      const question = document.getElementById('pollQuestion').value.trim();
+      const inputs = document.querySelectorAll('.opt-input');
+      const options = [...inputs].map(i => i.value.trim()).filter(v => v);
+      if (!question || options.length < 2) { alert('請輸入問題和至少 2 個選項'); return; }
+
+      db.collection('active_poll').doc('current').set({
+        question, options, active: true,
+        created_at: firebase.firestore.FieldValue.serverTimestamp()
       });
     }
 
-    db.collection('wordcloud_words')
-      .orderBy('timestamp', 'asc')
-      .onSnapshot(snapshot => {
-        wordMap.clear();
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          if (data.word) {
-            const w = data.word.trim();
-            wordMap.set(w, (wordMap.get(w) || 0) + 1);
-          }
-        });
-        renderWordCloud();
-      });
+    function stopPoll() {
+      db.collection('active_poll').doc('current').update({ active: false });
+    }
 
-    const baseUrl = window.location.origin + window.location.pathname.replace(/index\.html$/, '');
+    const BAR_COLORS = ['#3498db','#e74c3c','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e67e22','#f1c40f'];
+
+    function renderVoteResults(question, options, votesMap) {
+      document.getElementById('pollResults').style.display = 'block';
+      document.getElementById('noPollMsg').style.display = 'none';
+      document.getElementById('activeQuestion').textContent = '「' + question + '」';
+
+      const total = Object.values(votesMap).reduce((s,v) => s+v, 0);
+      document.getElementById('voteTotalCount').textContent = total;
+
+      const bars = document.getElementById('voteBars');
+      bars.innerHTML = '';
+      const maxVotes = Math.max(...Object.values(votesMap), 1);
+
+      options.forEach((opt, i) => {
+        const count = votesMap[opt] || 0;
+        const pct = total > 0 ? Math.round((count/total)*100) : 0;
+        const width = maxVotes > 0 ? (count/maxVotes)*100 : 0;
+
+        const row = document.createElement('div');
+        row.className = 'bar-row';
+        row.innerHTML = `
+          <div class="bar-label">${opt}</div>
+          <div class="bar-track">
+            <div class="bar-fill" style="width:${Math.max(width, 5)}%;background:${BAR_COLORS[i%BAR_COLORS.length]}">
+              ${pct}%
+            </div>
+          </div>
+          <div class="bar-count">${count}</div>`;
+        bars.appendChild(row);
+      });
+    }
+
+    function listenToPoll() {
+      if (pollListener) pollListener();
+      if (votesListener) votesListener();
+
+      pollListener = db.collection('active_poll').doc('current').onSnapshot(doc => {
+        if (doc.exists && doc.data().active) {
+          const data = doc.data();
+          currentPollId = doc.id;
+          document.getElementById('pollSetup').style.display = 'none';
+          document.getElementById('noPollMsg').style.display = 'none';
+          document.getElementById('startPollBtn').style.display = 'none';
+          document.getElementById('stopPollBtn').style.display = 'block';
+
+          // Listen for votes
+          if (votesListener) votesListener();
+          votesListener = db.collection('votes')
+            .where('pollId', '==', 'current')
+            .onSnapshot(voteSnap => {
+              const votesMap = {};
+              voteSnap.forEach(v => {
+                const opt = v.data().option;
+                votesMap[opt] = (votesMap[opt]||0) + 1;
+              });
+              renderVoteResults(data.question, data.options, votesMap);
+            });
+        } else {
+          currentPollId = null;
+          if (votesListener) { votesListener(); votesListener = null; }
+          document.getElementById('pollSetup').style.display = 'block';
+          document.getElementById('startPollBtn').style.display = 'block';
+          document.getElementById('stopPollBtn').style.display = 'none';
+          document.getElementById('pollResults').style.display = 'none';
+          document.getElementById('noPollMsg').style.display = 'block';
+        }
+      });
+    }
+
+    listenToPoll();
+
+    // ===== URL =====
+    const baseUrl = window.location.origin + window.location.pathname.replace(/index\.html$/,'');
     document.getElementById('submitUrl').textContent = baseUrl + 'submit.html';
-    document.getElementById('embedCode').textContent = `<iframe src="${baseUrl}" width="100%" height="600" frameborder="0"></iframe>`;
+    document.getElementById('embedCode').textContent = `<iframe src="${baseUrl}" width="100%" height="650" frameborder="0"></iframe>`;
+    document.getElementById('submitPageLink').href = baseUrl + 'submit.html';
   </script>
 </body>
 </html>
