@@ -352,12 +352,19 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // ===== Tab 切換 =====
+    // ===== Tab 切換 + 模式控制 =====
     function switchTab(name) {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
       document.querySelector(`.tab[onclick*="${name}"]`).classList.add('active');
       document.getElementById(`panel-${name}`).classList.add('active');
+
+      // 同步模式到 Firestore，讓學生端自動切換
+      const modeMap = { wordcloud: 'wordcloud', voting: 'voting' };
+      db.collection('active_mode').doc('current').set({
+        mode: modeMap[name] || 'wordcloud',
+        updated_at: firebase.firestore.FieldValue.serverTimestamp()
+      });
     }
 
     // ===== 文字雲 =====
@@ -529,6 +536,11 @@
 
     function stopPoll() {
       db.collection('active_poll').doc('current').update({ active: false });
+      // 投票結束，切回文字雲模式
+      db.collection('active_mode').doc('current').set({
+        mode: 'wordcloud',
+        updated_at: firebase.firestore.FieldValue.serverTimestamp()
+      });
     }
 
     const BAR_COLORS = ['#3498db','#e74c3c','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e67e22','#f1c40f'];
@@ -640,6 +652,16 @@
         qrCreated = true;
       }
     }
+
+    // ===== 初始化：確保 active_mode 文件存在 =====
+    db.collection('active_mode').doc('current').get().then(doc => {
+      if (!doc.exists) {
+        db.collection('active_mode').doc('current').set({
+          mode: 'waiting',
+          updated_at: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+    });
   </script>
 </body>
 </html>
