@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>學生互動工具</title>
+  <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore-compat.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #1a1a2e;
+      color: #eee;
+      font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .header { text-align: center; padding: 20px 15px 10px; }
+    .header h1 { font-size: 1.6rem; color: #f39c12; }
+    .header p { color: #888; font-size: 0.85rem; }
+
+    .tabs {
+      display: flex; justify-content: center; gap: 4px; margin: 10px auto; max-width: 350px; width: 90%;
+    }
+    .tab {
+      flex: 1; padding: 10px; text-align: center; cursor: pointer; border: none;
+      background: #16213e; color: #888; font-size: 0.95rem; border-radius: 8px 8px 0 0;
+      transition: all 0.3s;
+    }
+    .tab.active { background: #0f3460; color: #f39c12; font-weight: bold; }
+    .tab:hover { background: #0f3460; color: #ddd; }
+
+    .panel { display: none; width: 100%; max-width: 450px; padding: 10px 15px; }
+    .panel.active { display: block; }
+
+    /* 文字雲提交 */
+    .wc-container { text-align: center; }
+    .wc-container .icon { font-size: 3rem; margin-bottom: 10px; }
+    .wc-container h2 { margin-bottom: 6px; }
+    .wc-container p { color: #888; margin-bottom: 25px; font-size: 0.9rem; }
+    .wc-container input {
+      width: 100%; padding: 14px 18px; border: 2px solid #333; border-radius: 10px;
+      background: #16213e; color: #eee; font-size: 1.1rem; text-align: center;
+      outline: none; transition: border 0.3s;
+    }
+    .wc-container input:focus { border-color: #f39c12; }
+    .wc-container button {
+      width: 100%; padding: 14px; margin-top: 12px;
+      background: #f39c12; color: #1a1a2e; border: none; border-radius: 10px;
+      font-size: 1.1rem; font-weight: bold; cursor: pointer;
+    }
+    .wc-container button:hover { background: #e67e22; }
+    .wc-container button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* 投票 */
+    .vote-container { text-align: center; }
+    .vote-container .icon { font-size: 3rem; margin-bottom: 10px; }
+    .vote-container h2 { margin-bottom: 4px; }
+    .vote-question {
+      color: #ccc; font-size: 1.15rem; margin: 15px 0 20px;
+      padding: 15px; background: #16213e; border-radius: 10px;
+    }
+    .vote-btn {
+      width: 100%; padding: 14px; margin-bottom: 8px;
+      background: #16213e; border: 2px solid #333; border-radius: 10px;
+      color: #eee; font-size: 1.05rem; cursor: pointer; transition: all 0.2s;
+    }
+    .vote-btn:hover { border-color: #f39c12; background: #0f3460; transform: scale(1.02); }
+    .vote-btn:active { transform: scale(0.97); }
+    .vote-btn:disabled { opacity: 0.5; cursor: default; transform: none; }
+    .vote-btn.selected { border-color: #2ecc71; background: rgba(46,204,113,0.15); }
+
+    #voteStatus {
+      margin-top: 15px; padding: 12px; border-radius: 8px;
+      font-size: 0.9rem; display: none;
+    }
+    #voteStatus.success { display: block; background: rgba(46,204,113,0.2); color: #2ecc71; }
+    #voteStatus.error { display: block; background: rgba(231,76,60,0.2); color: #e74c3c; }
+
+    .no-active-poll { color: #666; text-align: center; padding: 40px 20px; }
+    .no-active-poll .big-icon { font-size: 3rem; margin-bottom: 15px; }
+
+    @media (max-width: 400px) {
+      .header h1 { font-size: 1.3rem; }
+      .vote-question { font-size: 1rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>📱 學生互動工具</h1>
+    <p>輸入關鍵字 × 即時投票</p>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('wordcloud')">☁️ 關鍵字</button>
+    <button class="tab" onclick="switchTab('voting')">📊 投票</button>
+  </div>
+
+  <!-- 關鍵字提交 -->
+  <div id="panel-wordcloud" class="panel active">
+    <div class="wc-container">
+      <div class="icon">☁️</div>
+      <h2>輸入關鍵字</h2>
+      <p>你想到什麼？輸入一個關鍵詞</p>
+      <input type="text" id="wordInput" placeholder="請輸入關鍵字..." maxlength="20" autofocus>
+      <button onclick="submitWord()" id="wordBtn">送出 ✨</button>
+      <div id="wordStatus"></div>
+    </div>
+  </div>
+
+  <!-- 投票 -->
+  <div id="panel-voting" class="panel">
+    <div class="vote-container">
+      <div class="icon">📊</div>
+      <h2>即時投票</h2>
+      <div id="voteArea">
+        <div class="no-active-poll">
+          <div class="big-icon">⏳</div>
+          <p>目前沒有進行中的投票</p>
+          <p style="font-size:0.8rem;margin-top:8px;color:#555;">等待老師開啟投票...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyA9ZPLKpVbf3f-fQXzzMIcAIDhq9awDY3Q",
+      authDomain: "my-teaching-tools-60a6f.firebaseapp.com",
+      projectId: "my-teaching-tools-60a6f",
+      storageBucket: "my-teaching-tools-60a6f.firebasestorage.app",
+      messagingSenderId: "431880019604",
+      appId: "1:431880019604:web:795dbcbd41597c57431e81"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let hasVoted = false;
+
+    function switchTab(name) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.querySelector(`.tab[onclick*="${name}"]`).classList.add('active');
+      document.getElementById(`panel-${name}`).classList.add('active');
+    }
+
+    // ===== 關鍵字提交 =====
+    function submitWord() {
+      const input = document.getElementById('wordInput');
+      const word = input.value.trim();
+      const status = document.getElementById('wordStatus');
+      const btn = document.getElementById('wordBtn');
+
+      if (!word) {
+        status.style.cssText = 'margin-top:12px;padding:10px;border-radius:6px;background:rgba(231,76,60,0.2);color:#e74c3c;display:block;';
+        status.textContent = '請先輸入關鍵字！';
+        return;
+      }
+
+      status.style.display = 'none';
+      btn.disabled = true;
+      btn.textContent = '送出中...';
+
+      db.collection('wordcloud_words').add({
+        word, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(() => {
+        status.style.cssText = 'margin-top:12px;padding:10px;border-radius:6px;background:rgba(46,204,113,0.2);color:#2ecc71;display:block;';
+        status.textContent = `✅ 「${word}」已送出！`;
+        input.value = '';
+        input.focus();
+      }).catch(() => {
+        status.style.cssText = 'margin-top:12px;padding:10px;border-radius:6px;background:rgba(231,76,60,0.2);color:#e74c3c;display:block;';
+        status.textContent = '❌ 送出失敗，請重試';
+      }).finally(() => {
+        btn.disabled = false;
+        btn.textContent = '送出 ✨';
+        setTimeout(() => { status.style.display = 'none'; }, 2500);
+      });
+    }
+    document.getElementById('wordInput').addEventListener('keypress', e => {
+      if (e.key === 'Enter') submitWord();
+    });
+
+    // ===== 投票 =====
+    let currentPollId = null;
+    let pollListener = null;
+
+    function listenToActivePoll() {
+      if (pollListener) pollListener();
+
+      pollListener = db.collection('active_poll').doc('current').onSnapshot(doc => {
+        const voteArea = document.getElementById('voteArea');
+
+        if (doc.exists && doc.data().active) {
+          const data = doc.data();
+          currentPollId = doc.id;
+          hasVoted = false;
+
+          let optionsHtml = data.options.map((opt, i) =>
+            `<button class="vote-btn" onclick="castVote('${opt.replace(/'/g,"\\'")}')" id="opt-${i}">${opt}</button>`
+          ).join('');
+
+          voteArea.innerHTML = `
+            <div class="vote-question">${data.question}</div>
+            ${optionsHtml}
+            <div id="voteStatus"></div>
+            <p style="color:#555;font-size:0.75rem;margin-top:16px;">
+              ${data.options.length} 個選項．選擇後不可修改
+            </p>
+          `;
+        } else {
+          currentPollId = null;
+          voteArea.innerHTML = `
+            <div class="no-active-poll">
+              <div class="big-icon">⏳</div>
+              <p>目前沒有進行中的投票</p>
+              <p style="font-size:0.8rem;margin-top:8px;color:#555;">等待老師開啟投票...</p>
+            </div>
+          `;
+        }
+      });
+    }
+
+    function castVote(option) {
+      if (!currentPollId || hasVoted) return;
+      hasVoted = true;
+
+      db.collection('votes').add({
+        pollId: 'current',
+        option,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(() => {
+        document.querySelectorAll('.vote-btn').forEach(b => b.disabled = true);
+        const status = document.getElementById('voteStatus');
+        status.className = 'success';
+        status.textContent = `✅ 你已投票：${option}`;
+
+        // Highlight selected
+        document.querySelectorAll('.vote-btn').forEach(b => {
+          if (b.textContent === option) b.classList.add('selected');
+        });
+      }).catch(() => {
+        hasVoted = false;
+        const status = document.getElementById('voteStatus');
+        status.className = 'error';
+        status.textContent = '❌ 投票失敗，請重試';
+      });
+    }
+
+    listenToActivePoll();
+  </script>
+</body>
+</html>

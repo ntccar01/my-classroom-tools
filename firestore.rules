@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 文字雲：任何人可讀寫（課堂公開使用）
+    match /wordcloud_words/{document} {
+      allow read, write: if true;
+    }
+
+    // 投票：任何人可讀寫（課堂公開使用）
+    match /active_poll/{document} {
+      allow read, write: if true;
+    }
+    match /votes/{document} {
+      allow read, write: if true;
+    }
+
+    // 其他集合預設禁止存取
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
