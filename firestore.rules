@@ -7,6 +7,11 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // 活動模式控制：老師控制學生端顯示哪個畫面
+    match /active_mode/{document} {
+      allow read, write: if true;
+    }
+
     // 投票：任何人可讀寫（課堂公開使用）
     match /active_poll/{document} {
       allow read, write: if true;

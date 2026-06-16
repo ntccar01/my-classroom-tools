@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>學生互動工具</title>
   <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore-compat.js"></script>
@@ -15,113 +15,178 @@
       min-height: 100vh;
       display: flex;
       flex-direction: column;
-      align-items: center;
     }
-    .header { text-align: center; padding: 20px 15px 10px; }
-    .header h1 { font-size: 1.6rem; color: #f39c12; }
-    .header p { color: #888; font-size: 0.85rem; }
 
-    .tabs {
-      display: flex; justify-content: center; gap: 4px; margin: 10px auto; max-width: 350px; width: 90%;
-    }
-    .tab {
-      flex: 1; padding: 10px; text-align: center; cursor: pointer; border: none;
-      background: #16213e; color: #888; font-size: 0.95rem; border-radius: 8px 8px 0 0;
-      transition: all 0.3s;
-    }
-    .tab.active { background: #0f3460; color: #f39c12; font-weight: bold; }
-    .tab:hover { background: #0f3460; color: #ddd; }
+    /* 所有畫面共用 */
+    .screen { display: none; flex: 1; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+    .screen.active { display: flex; }
 
-    .panel { display: none; width: 100%; max-width: 450px; padding: 10px 15px; }
-    .panel.active { display: block; }
+    /* === 等待畫面 === */
+    .waiting-screen { text-align: center; }
+    .waiting-screen .logo { font-size: 4rem; margin-bottom: 10px; animation: pulse 2s ease-in-out infinite; }
+    @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+    .waiting-screen h1 { font-size: 1.6rem; color: #f39c12; margin-bottom: 6px; }
+    .waiting-screen .subtitle { color: #888; font-size: 0.9rem; margin-bottom: 25px; }
 
-    /* 文字雲提交 */
-    .wc-container { text-align: center; }
-    .wc-container .icon { font-size: 3rem; margin-bottom: 10px; }
-    .wc-container h2 { margin-bottom: 6px; }
-    .wc-container p { color: #888; margin-bottom: 25px; font-size: 0.9rem; }
-    .wc-container input {
-      width: 100%; padding: 14px 18px; border: 2px solid #333; border-radius: 10px;
-      background: #16213e; color: #eee; font-size: 1.1rem; text-align: center;
-      outline: none; transition: border 0.3s;
+    .info-form { width: 100%; max-width: 320px; }
+    .info-form .field { margin-bottom: 12px; }
+    .info-form label { display: block; color: #aaa; font-size: 0.8rem; margin-bottom: 4px; text-align: left; }
+    .info-form input {
+      width: 100%; padding: 12px 14px; border: 2px solid #333; border-radius: 8px;
+      background: #16213e; color: #eee; font-size: 1rem; outline: none;
     }
-    .wc-container input:focus { border-color: #f39c12; }
-    .wc-container button {
-      width: 100%; padding: 14px; margin-top: 12px;
-      background: #f39c12; color: #1a1a2e; border: none; border-radius: 10px;
-      font-size: 1.1rem; font-weight: bold; cursor: pointer;
+    .info-form input:focus { border-color: #f39c12; }
+    .info-form .row { display: flex; gap: 10px; }
+    .info-form .row .field { flex: 1; }
+    .info-form .anon-row {
+      display: flex; align-items: center; gap: 8px; margin: 12px 0;
+      color: #aaa; font-size: 0.85rem; cursor: pointer;
     }
-    .wc-container button:hover { background: #e67e22; }
-    .wc-container button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .info-form .anon-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: #f39c12; }
+    .info-form .enter-btn {
+      width: 100%; padding: 14px; background: #f39c12; color: #1a1a2e;
+      border: none; border-radius: 8px; font-size: 1.1rem; font-weight: bold;
+      cursor: pointer; transition: background 0.3s;
+    }
+    .info-form .enter-btn:hover { background: #e67e22; }
+    .info-form .enter-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    /* 投票 */
-    .vote-container { text-align: center; }
-    .vote-container .icon { font-size: 3rem; margin-bottom: 10px; }
-    .vote-container h2 { margin-bottom: 4px; }
-    .vote-question {
-      color: #ccc; font-size: 1.15rem; margin: 15px 0 20px;
-      padding: 15px; background: #16213e; border-radius: 10px;
+    /* 已登入的等待畫面 */
+    .logged-waiting { text-align: center; }
+    .logged-waiting .avatar {
+      width: 80px; height: 80px; border-radius: 50%;
+      background: #0f3460; display: flex; align-items: center; justify-content: center;
+      font-size: 2rem; margin: 0 auto 15px; border: 3px solid #f39c12;
     }
-    .vote-btn {
+    .logged-waiting h2 { font-size: 1.3rem; margin-bottom: 4px; }
+    .logged-waiting .student-info { color: #888; font-size: 0.9rem; margin-bottom: 20px; }
+    .logged-waiting .waiting-hint {
+      color: #666; font-size: 0.95rem; animation: blink 1.5s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .logged-waiting .change-btn {
+      margin-top: 20px; background: none; border: 1px solid #555; color: #888;
+      padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.8rem;
+    }
+    .logged-waiting .change-btn:hover { border-color: #f39c12; color: #f39c12; }
+
+    /* === 文字雲畫面 === */
+    .wordcloud-screen { text-align: center; width: 100%; }
+    .wordcloud-screen h2 { font-size: 1.3rem; color: #f39c12; margin-bottom: 15px; }
+    .wc-input {
+      display: flex; gap: 8px; width: 100%; max-width: 350px; margin: 0 auto 15px;
+    }
+    .wc-input input {
+      flex: 1; padding: 14px 16px; border: 2px solid #333; border-radius: 10px;
+      background: #16213e; color: #eee; font-size: 1.1rem; text-align: center; outline: none;
+    }
+    .wc-input input:focus { border-color: #f39c12; }
+    .wc-input button {
+      padding: 14px 20px; background: #f39c12; color: #1a1a2e;
+      border: none; border-radius: 10px; font-size: 1rem; font-weight: bold; cursor: pointer;
+    }
+    .wc-input button:disabled { opacity: 0.5; }
+    .wc-status {
+      margin-top: 10px; padding: 10px; border-radius: 6px;
+      font-size: 0.9rem; display: none;
+    }
+    .wc-status.ok { display: block; background: rgba(46,204,113,0.2); color: #2ecc71; }
+    .wc-status.err { display: block; background: rgba(231,76,60,0.2); color: #e74c3c; }
+    .wc-count { color: #666; font-size: 0.8rem; margin-top: 10px; }
+
+    /* === 投票畫面 === */
+    .vote-screen { text-align: center; width: 100%; max-width: 400px; }
+    .vote-screen h2 { font-size: 1.3rem; color: #f39c12; margin-bottom: 10px; }
+    .vote-screen .question-img {
+      max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 15px;
+    }
+    .vote-screen .question-text {
+      color: #ccc; font-size: 1.1rem; margin-bottom: 20px;
+      padding: 12px; background: #16213e; border-radius: 8px;
+    }
+    .vote-screen .vote-btn {
       width: 100%; padding: 14px; margin-bottom: 8px;
       background: #16213e; border: 2px solid #333; border-radius: 10px;
       color: #eee; font-size: 1.05rem; cursor: pointer; transition: all 0.2s;
     }
-    .vote-btn:hover { border-color: #f39c12; background: #0f3460; transform: scale(1.02); }
-    .vote-btn:active { transform: scale(0.97); }
-    .vote-btn:disabled { opacity: 0.5; cursor: default; transform: none; }
-    .vote-btn.selected { border-color: #2ecc71; background: rgba(46,204,113,0.15); }
-
+    .vote-screen .vote-btn:hover { border-color: #f39c12; background: #0f3460; transform: scale(1.02); }
+    .vote-screen .vote-btn:active { transform: scale(0.97); }
+    .vote-screen .vote-btn:disabled { opacity: 0.5; cursor: default; transform: none; }
+    .vote-screen .vote-btn.selected { border-color: #2ecc71; background: rgba(46,204,113,0.15); }
+    .vote-screen .vote-hint { color: #555; font-size: 0.75rem; margin-top: 12px; }
     #voteStatus {
-      margin-top: 15px; padding: 12px; border-radius: 8px;
-      font-size: 0.9rem; display: none;
+      margin-top: 12px; padding: 10px; border-radius: 6px; font-size: 0.9rem; display: none;
     }
     #voteStatus.success { display: block; background: rgba(46,204,113,0.2); color: #2ecc71; }
     #voteStatus.error { display: block; background: rgba(231,76,60,0.2); color: #e74c3c; }
 
-    .no-active-poll { color: #666; text-align: center; padding: 40px 20px; }
-    .no-active-poll .big-icon { font-size: 3rem; margin-bottom: 15px; }
-
-    @media (max-width: 400px) {
-      .header h1 { font-size: 1.3rem; }
-      .vote-question { font-size: 1rem; }
-    }
+    /* 樣式工具 */
+    .fade-in { animation: fadeIn 0.4s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
   </style>
 </head>
 <body>
-  <div class="header">
-    <h1>📱 學生互動工具</h1>
-    <p>輸入關鍵字 × 即時投票</p>
-  </div>
-
-  <div class="tabs">
-    <button class="tab active" onclick="switchTab('wordcloud')">☁️ 關鍵字</button>
-    <button class="tab" onclick="switchTab('voting')">📊 投票</button>
-  </div>
-
-  <!-- 關鍵字提交 -->
-  <div id="panel-wordcloud" class="panel active">
-    <div class="wc-container">
-      <div class="icon">☁️</div>
-      <h2>輸入關鍵字</h2>
-      <p>你想到什麼？輸入一個關鍵詞</p>
-      <input type="text" id="wordInput" placeholder="請輸入關鍵字..." maxlength="20" autofocus>
-      <button onclick="submitWord()" id="wordBtn">送出 ✨</button>
-      <div id="wordStatus"></div>
+  <!-- 畫面 1：首次等待（填資料） -->
+  <div class="screen active" id="screen-waiting-form">
+    <div class="waiting-screen">
+      <div class="logo">🎯</div>
+      <h1>班級互動工具</h1>
+      <p class="subtitle">請先填寫基本資料，等待老師開始活動</p>
+      <div class="info-form">
+        <div class="row">
+          <div class="field">
+            <label>班級</label>
+            <input type="text" id="inputClass" placeholder="例：109忠" maxlength="10">
+          </div>
+          <div class="field">
+            <label>座號</label>
+            <input type="number" id="inputSeat" placeholder="例：15" min="1" max="99">
+          </div>
+        </div>
+        <div class="field">
+          <label>姓名</label>
+          <input type="text" id="inputName" placeholder="你的姓名" maxlength="20">
+        </div>
+        <label class="anon-row">
+          <input type="checkbox" id="inputAnon" onchange="toggleAnonymous()">
+          <span>匿名參與（不顯示個人姓名）</span>
+        </label>
+        <button class="enter-btn" id="enterBtn" onclick="enterClass()">進入課堂</button>
+      </div>
     </div>
   </div>
 
-  <!-- 投票 -->
-  <div id="panel-voting" class="panel">
-    <div class="vote-container">
-      <div class="icon">📊</div>
-      <h2>即時投票</h2>
-      <div id="voteArea">
-        <div class="no-active-poll">
-          <div class="big-icon">⏳</div>
-          <p>目前沒有進行中的投票</p>
-          <p style="font-size:0.8rem;margin-top:8px;color:#555;">等待老師開啟投票...</p>
-        </div>
+  <!-- 畫面 2：已登入等待中 -->
+  <div class="screen" id="screen-waiting">
+    <div class="logged-waiting">
+      <div class="avatar" id="userAvatar">?</div>
+      <h2 id="welcomeName">同學你好</h2>
+      <p class="student-info" id="welcomeInfo"></p>
+      <p class="waiting-hint">⏳ 等待老師開始活動...</p>
+      <button class="change-btn" onclick="changeInfo()">修改資料</button>
+    </div>
+  </div>
+
+  <!-- 畫面 3：文字雲 -->
+  <div class="screen" id="screen-wordcloud">
+    <div class="wordcloud-screen fade-in">
+      <h2>☁️ 輸入關鍵字</h2>
+      <p style="color:#888;margin-bottom:15px;font-size:0.9rem;">你想到什麼？輸入一個關鍵詞</p>
+      <div class="wc-input">
+        <input type="text" id="wordInput" placeholder="請輸入關鍵字..." maxlength="20">
+        <button onclick="submitWord()" id="wordBtn">送出</button>
+      </div>
+      <div id="wordStatus" class="wc-status"></div>
+      <p class="wc-count">目前已收集 <span id="wordCount">0</span> 個詞</p>
+    </div>
+  </div>
+
+  <!-- 畫面 4：投票 -->
+  <div class="screen" id="screen-voting">
+    <div class="vote-screen fade-in">
+      <h2>📊 即時投票</h2>
+      <div id="voteContent">
+        <p style="color:#666;">載入中...</p>
       </div>
     </div>
   </div>
@@ -138,113 +203,134 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
+    let studentInfo = { class: '', seat: '', name: '', anonymous: false };
+    let currentMode = 'waiting';
     let hasVoted = false;
 
-    function switchTab(name) {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-      document.querySelector(`.tab[onclick*="${name}"]`).classList.add('active');
-      document.getElementById(`panel-${name}`).classList.add('active');
+    // ===== 畫面切換 =====
+    function showScreen(id) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
     }
 
-    // ===== 關鍵字提交 =====
+    // ===== 資料表單 =====
+    function toggleAnonymous() {
+      const anon = document.getElementById('inputAnon').checked;
+      document.getElementById('inputName').disabled = anon;
+      document.getElementById('inputClass').disabled = anon;
+      document.getElementById('inputSeat').disabled = anon;
+      if (anon) {
+        document.getElementById('inputName').value = '';
+        document.getElementById('inputClass').value = '';
+        document.getElementById('inputSeat').value = '';
+      }
+    }
+
+    function enterClass() {
+      const anon = document.getElementById('inputAnon').checked;
+      if (!anon) {
+        studentInfo.class = document.getElementById('inputClass').value.trim();
+        studentInfo.seat = document.getElementById('inputSeat').value.trim();
+        studentInfo.name = document.getElementById('inputName').value.trim();
+        if (!studentInfo.name) { alert('請輸入姓名或選擇匿名'); return; }
+      } else {
+        studentInfo = { class: '', seat: '', name: '匿名同學', anonymous: true };
+      }
+      // 存到 localStorage
+      localStorage.setItem('studentInfo', JSON.stringify(studentInfo));
+      updateWaitingScreen();
+      showScreen('screen-waiting');
+    }
+
+    function updateWaitingScreen() {
+      const avatar = document.getElementById('userAvatar');
+      const nameEl = document.getElementById('welcomeName');
+      const infoEl = document.getElementById('welcomeInfo');
+      if (studentInfo.anonymous) {
+        avatar.textContent = '🎭';
+        nameEl.textContent = '匿名同學';
+        infoEl.textContent = '你的參與不會記錄姓名';
+      } else {
+        avatar.textContent = studentInfo.name.charAt(0);
+        nameEl.textContent = `${studentInfo.name} 同學你好`;
+        infoEl.textContent = `${studentInfo.class} 座號 ${studentInfo.seat}`;
+      }
+    }
+
+    function changeInfo() {
+      localStorage.removeItem('studentInfo');
+      showScreen('screen-waiting-form');
+    }
+
+    // 檢查是否已填過資料
+    function checkSavedInfo() {
+      const saved = localStorage.getItem('studentInfo');
+      if (saved) {
+        studentInfo = JSON.parse(saved);
+        updateWaitingScreen();
+        showScreen('screen-waiting');
+      }
+    }
+
+    // ===== 文字雲 =====
     function submitWord() {
       const input = document.getElementById('wordInput');
       const word = input.value.trim();
       const status = document.getElementById('wordStatus');
       const btn = document.getElementById('wordBtn');
+      if (!word) { status.className = 'wc-status err'; status.textContent = '請先輸入關鍵字！'; return; }
 
-      if (!word) {
-        status.style.cssText = 'margin-top:12px;padding:10px;border-radius:6px;background:rgba(231,76,60,0.2);color:#e74c3c;display:block;';
-        status.textContent = '請先輸入關鍵字！';
-        return;
-      }
-
-      status.style.display = 'none';
       btn.disabled = true;
       btn.textContent = '送出中...';
 
-      db.collection('wordcloud_words').add({
-        word, timestamp: firebase.firestore.FieldValue.serverTimestamp()
-      }).then(() => {
-        status.style.cssText = 'margin-top:12px;padding:10px;border-radius:6px;background:rgba(46,204,113,0.2);color:#2ecc71;display:block;';
+      const payload = { word, timestamp: firebase.firestore.FieldValue.serverTimestamp() };
+      if (!studentInfo.anonymous) {
+        payload.student_class = studentInfo.class;
+        payload.student_seat = studentInfo.seat;
+        payload.student_name = studentInfo.name;
+      } else {
+        payload.anonymous = true;
+      }
+
+      db.collection('wordcloud_words').add(payload).then(() => {
+        status.className = 'wc-status ok';
         status.textContent = `✅ 「${word}」已送出！`;
         input.value = '';
         input.focus();
       }).catch(() => {
-        status.style.cssText = 'margin-top:12px;padding:10px;border-radius:6px;background:rgba(231,76,60,0.2);color:#e74c3c;display:block;';
+        status.className = 'wc-status err';
         status.textContent = '❌ 送出失敗，請重試';
       }).finally(() => {
         btn.disabled = false;
-        btn.textContent = '送出 ✨';
-        setTimeout(() => { status.style.display = 'none'; }, 2500);
+        btn.textContent = '送出';
+        setTimeout(() => { status.className = 'wc-status'; status.textContent = ''; }, 2500);
       });
     }
-    document.getElementById('wordInput').addEventListener('keypress', e => {
-      if (e.key === 'Enter') submitWord();
-    });
+    document.getElementById('wordInput').addEventListener('keypress', e => { if (e.key === 'Enter') submitWord(); });
 
     // ===== 投票 =====
-    let currentPollId = null;
-    let pollListener = null;
-
-    function listenToActivePoll() {
-      if (pollListener) pollListener();
-
-      pollListener = db.collection('active_poll').doc('current').onSnapshot(doc => {
-        const voteArea = document.getElementById('voteArea');
-
-        if (doc.exists && doc.data().active) {
-          const data = doc.data();
-          currentPollId = doc.id;
-          hasVoted = false;
-
-          let optionsHtml = data.options.map((opt, i) =>
-            `<button class="vote-btn" onclick="castVote('${opt.replace(/'/g,"\\'")}')" id="opt-${i}">${opt}</button>`
-          ).join('');
-
-          const questionImg = data.image
-            ? `<img src="${data.image}" style="max-width:100%;max-height:300px;border-radius:8px;margin-bottom:15px;display:block;">`
-            : '';
-
-          voteArea.innerHTML = `
-            ${questionImg}
-            <div class="vote-question">${data.question}</div>
-            ${optionsHtml}
-            <div id="voteStatus"></div>
-            <p style="color:#555;font-size:0.75rem;margin-top:16px;">
-              ${data.options.length} 個選項．選擇後不可修改
-            </p>
-          `;
-        } else {
-          currentPollId = null;
-          voteArea.innerHTML = `
-            <div class="no-active-poll">
-              <div class="big-icon">⏳</div>
-              <p>目前沒有進行中的投票</p>
-              <p style="font-size:0.8rem;margin-top:8px;color:#555;">等待老師開啟投票...</p>
-            </div>
-          `;
-        }
-      });
-    }
-
     function castVote(option) {
-      if (!currentPollId || hasVoted) return;
+      if (hasVoted) return;
       hasVoted = true;
 
-      db.collection('votes').add({
-        pollId: 'current',
-        option,
+      const payload = {
+        pollId: 'current', option,
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
-      }).then(() => {
-        document.querySelectorAll('.vote-btn').forEach(b => b.disabled = true);
+      };
+      if (!studentInfo.anonymous) {
+        payload.student_class = studentInfo.class;
+        payload.student_seat = studentInfo.seat;
+        payload.student_name = studentInfo.name;
+      } else {
+        payload.anonymous = true;
+      }
+
+      db.collection('votes').add(payload).then(() => {
+        document.querySelectorAll('#voteContent .vote-btn').forEach(b => b.disabled = true);
         const status = document.getElementById('voteStatus');
         status.className = 'success';
         status.textContent = `✅ 你已投票：${option}`;
-
-        // Highlight selected
-        document.querySelectorAll('.vote-btn').forEach(b => {
+        document.querySelectorAll('#voteContent .vote-btn').forEach(b => {
           if (b.textContent === option) b.classList.add('selected');
         });
       }).catch(() => {
@@ -255,7 +341,76 @@
       });
     }
 
-    listenToActivePoll();
+    function renderVote(data) {
+      hasVoted = false;
+      const content = document.getElementById('voteContent');
+      const questionImg = data.image
+        ? `<img src="${data.image}" class="question-img">`
+        : '';
+      const questionText = data.question
+        ? `<div class="question-text">${data.question}</div>`
+        : '';
+      const optionsHtml = data.options.map((opt, i) =>
+        `<button class="vote-btn" onclick="castVote('${opt.replace(/'/g,"\\'")}')">${opt}</button>`
+      ).join('');
+
+      content.innerHTML = `
+        ${questionImg}
+        ${questionText}
+        ${optionsHtml}
+        <div id="voteStatus"></div>
+        <p class="vote-hint">${data.options.length} 個選項．選擇後不可修改</p>
+      `;
+    }
+
+    // ===== 模式監聽（自動切換畫面）=====
+    function listenToMode() {
+      db.collection('active_mode').doc('current').onSnapshot(doc => {
+        if (doc.exists) {
+          const mode = doc.data().mode;
+          if (mode !== currentMode) {
+            currentMode = mode;
+            switchToMode(mode);
+          }
+        }
+      });
+    }
+
+    function switchToMode(mode) {
+      hasVoted = false;
+      switch (mode) {
+        case 'wordcloud':
+          showScreen('screen-wordcloud');
+          break;
+        case 'voting':
+          showScreen('screen-voting');
+          listenToActivePoll();
+          break;
+        default: // 'waiting'
+          showScreen('screen-waiting');
+          break;
+      }
+    }
+
+    function listenToActivePoll() {
+      db.collection('active_poll').doc('current').onSnapshot(doc => {
+        if (doc.exists && doc.data().active) {
+          renderVote(doc.data());
+        } else {
+          document.getElementById('voteContent').innerHTML =
+            '<p style="color:#666;">目前沒有進行中的投票</p>';
+        }
+      });
+    }
+
+    // ===== 文字雲計數 =====
+    db.collection('wordcloud_words').onSnapshot(s => {
+      document.getElementById('wordCount').textContent = s.size;
+    });
+
+    // ===== 啟動 =====
+    checkSavedInfo();
+    listenToMode();
   </script>
 </body>
 </html>
