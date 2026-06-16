@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>提交關鍵字</title>
+  <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore-compat.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #1a1a2e;
+      color: #eee;
+      font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .container {
+      text-align: center;
+      padding: 40px 30px;
+      width: 100%;
+      max-width: 400px;
+    }
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+    }
+    p {
+      color: #888;
+      margin-bottom: 30px;
+      font-size: 1rem;
+    }
+    input {
+      width: 100%;
+      padding: 16px 20px;
+      border: 2px solid #333;
+      border-radius: 12px;
+      background: #16213e;
+      color: #eee;
+      font-size: 1.2rem;
+      text-align: center;
+      outline: none;
+      transition: border 0.3s, box-shadow 0.3s;
+    }
+    input:focus {
+      border-color: #f39c12;
+      box-shadow: 0 0 20px rgba(243, 156, 18, 0.2);
+    }
+    button {
+      width: 100%;
+      padding: 16px;
+      margin-top: 16px;
+      background: #f39c12;
+      color: #1a1a2e;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.2rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.3s, transform 0.1s;
+    }
+    button:hover {
+      background: #e67e22;
+    }
+    button:active {
+      transform: scale(0.97);
+    }
+    #status {
+      margin-top: 20px;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      display: none;
+    }
+    #status.success {
+      display: block;
+      background: rgba(46, 204, 113, 0.2);
+      color: #2ecc71;
+      border: 1px solid rgba(46, 204, 113, 0.3);
+    }
+    #status.error {
+      display: block;
+      background: rgba(231, 76, 60, 0.2);
+      color: #e74c3c;
+      border: 1px solid rgba(231, 76, 60, 0.3);
+    }
+    .count {
+      margin-top: 16px;
+      color: #555;
+      font-size: 0.85rem;
+    }
+    .count span {
+      color: #f39c12;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div style="font-size:3rem; margin-bottom:10px;">☁️</div>
+    <h1>輸入關鍵字</h1>
+    <p>你想到什麼？輸入一個關鍵詞</p>
+
+    <input type="text" id="wordInput" placeholder="請輸入關鍵字..." maxlength="20" autofocus>
+    <button onclick="submitWord()">送出 ✨</button>
+
+    <div id="status"></div>
+    <div class="count">目前已收集 <span id="wordCount">0</span> 個詞</div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyA9ZPLKpVbf3f-fQXzzMIcAIDhq9awDY3Q",
+      authDomain: "my-teaching-tools-60a6f.firebaseapp.com",
+      projectId: "my-teaching-tools-60a6f",
+      storageBucket: "my-teaching-tools-60a6f.firebasestorage.app",
+      messagingSenderId: "431880019604",
+      appId: "1:431880019604:web:795dbcbd41597c57431e81"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let totalCount = 0;
+
+    function submitWord() {
+      const input = document.getElementById('wordInput');
+      const word = input.value.trim();
+      const status = document.getElementById('status');
+
+      if (!word) {
+        status.className = 'error';
+        status.textContent = '請先輸入關鍵字！';
+        return;
+      }
+
+      status.style.display = 'none';
+      const btn = document.querySelector('button');
+      btn.disabled = true;
+      btn.textContent = '送出中...';
+
+      db.collection('wordcloud_words').add({
+        word: word,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(() => {
+        status.className = 'success';
+        status.textContent = `✅ 「${word}」已送出！`;
+        input.value = '';
+        input.focus();
+      }).catch(err => {
+        status.className = 'error';
+        status.textContent = '❌ 送出失敗，請重試';
+        console.error(err);
+      }).finally(() => {
+        btn.disabled = false;
+        btn.textContent = '送出 ✨';
+        setTimeout(() => { status.style.display = 'none'; }, 3000);
+      });
+    }
+
+    document.getElementById('wordInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') submitWord();
+    });
+
+    db.collection('wordcloud_words').onSnapshot(snapshot => {
+      totalCount = snapshot.size;
+      document.getElementById('wordCount').textContent = totalCount;
+    });
+  </script>
+</body>
+</html>

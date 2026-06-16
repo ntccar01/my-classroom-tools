@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>即時文字雲</title>
+  <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore-compat.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #1a1a2e;
+      color: #eee;
+      font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 {
+      font-size: 2rem;
+      margin: 20px 0 10px;
+      color: #f39c12;
+      text-align: center;
+    }
+    .subtitle {
+      color: #888;
+      font-size: 0.9rem;
+      margin-bottom: 15px;
+      text-align: center;
+    }
+    #wordcloud {
+      width: 90%;
+      max-width: 900px;
+      min-height: 400px;
+      background: #16213e;
+      border-radius: 12px;
+      padding: 30px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      align-content: center;
+      gap: 12px;
+      margin: 10px auto;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    .word-item {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 8px;
+      cursor: default;
+      transition: all 0.3s ease;
+      animation: fadeIn 0.5s ease;
+    }
+    .word-item:hover {
+      transform: scale(1.1);
+      background: rgba(243, 156, 18, 0.15);
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.5); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .input-area {
+      display: flex;
+      gap: 10px;
+      margin: 20px auto;
+      width: 90%;
+      max-width: 500px;
+    }
+    .input-area input {
+      flex: 1;
+      padding: 12px 18px;
+      border: 2px solid #333;
+      border-radius: 8px;
+      background: #16213e;
+      color: #eee;
+      font-size: 1rem;
+      outline: none;
+      transition: border 0.3s;
+    }
+    .input-area input:focus {
+      border-color: #f39c12;
+    }
+    .input-area button {
+      padding: 12px 24px;
+      background: #f39c12;
+      color: #1a1a2e;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .input-area button:hover {
+      background: #e67e22;
+    }
+    .stats {
+      display: flex;
+      gap: 30px;
+      justify-content: center;
+      margin: 10px 0;
+      color: #888;
+      font-size: 0.9rem;
+    }
+    .stats span {
+      color: #f39c12;
+      font-weight: bold;
+    }
+    .clear-btn {
+      padding: 6px 16px;
+      background: #e74c3c;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      margin-left: 10px;
+    }
+    .clear-btn:hover {
+      background: #c0392b;
+    }
+    .embed-notice {
+      margin: 20px 0;
+      padding: 12px 20px;
+      background: #0f3460;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      color: #aaa;
+      text-align: center;
+    }
+    .embed-notice code {
+      background: #1a1a2e;
+      padding: 2px 8px;
+      border-radius: 4px;
+      color: #f39c12;
+    }
+    @media (max-width: 600px) {
+      h1 { font-size: 1.5rem; }
+      #wordcloud { min-height: 300px; padding: 15px; gap: 8px; }
+      .word-item { padding: 4px 10px; }
+    }
+  </style>
+</head>
+<body>
+  <h1>☁️ 即時文字雲</h1>
+  <p class="subtitle">學生用手機掃 QR Code 提交關鍵字，這裡即時更新</p>
+
+  <div class="stats">
+    <div>總字數：<span id="totalCount">0</span></div>
+    <div>不重複：<span id="uniqueCount">0</span></div>
+    <button class="clear-btn" onclick="clearAll()">🗑 清除全部</button>
+  </div>
+
+  <div id="wordcloud">
+    <p style="color:#666;">等待資料中...</p>
+  </div>
+
+  <div class="input-area">
+    <input type="text" id="wordInput" placeholder="輸入關鍵字..." maxlength="20">
+    <button onclick="addWord()">送出</button>
+  </div>
+
+  <div class="embed-notice">
+    🔗 學生提交網址：<code id="submitUrl">載入中...</code>
+    <br>
+    📋 嵌入簡報：<code id="embedCode">載入中...</code>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyA9ZPLKpVbf3f-fQXzzMIcAIDhq9awDY3Q",
+      authDomain: "my-teaching-tools-60a6f.firebaseapp.com",
+      projectId: "my-teaching-tools-60a6f",
+      storageBucket: "my-teaching-tools-60a6f.firebasestorage.app",
+      messagingSenderId: "431880019604",
+      appId: "1:431880019604:web:795dbcbd41597c57431e81"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const COLORS = ['#f39c12','#e74c3c','#2ecc71','#3498db','#9b59b6','#1abc9c','#e67e22','#f1c40f'];
+    const SIZES = [14,18,22,26,32,38,46];
+
+    let wordMap = new Map();
+
+    function getWordSize(count) {
+      const maxCount = Math.max(...wordMap.values(), 1);
+      const ratio = count / maxCount;
+      const idx = Math.min(Math.floor(ratio * SIZES.length), SIZES.length - 1);
+      return SIZES[idx];
+    }
+
+    function getWordColor(word) {
+      let hash = 0;
+      for (let i = 0; i < word.length; i++) {
+        hash = word.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      return COLORS[Math.abs(hash) % COLORS.length];
+    }
+
+    function renderWordCloud() {
+      const container = document.getElementById('wordcloud');
+      container.innerHTML = '';
+
+      if (wordMap.size === 0) {
+        container.innerHTML = '<p style="color:#666;">還沒有資料，請學生提交關鍵字 ✨</p>';
+        document.getElementById('totalCount').textContent = '0';
+        document.getElementById('uniqueCount').textContent = '0';
+        return;
+      }
+
+      const sorted = [...wordMap.entries()].sort((a, b) => b[1] - a[1]);
+
+      sorted.forEach(([word, count]) => {
+        const el = document.createElement('span');
+        el.className = 'word-item';
+        el.style.fontSize = getWordSize(count) + 'px';
+        el.style.color = getWordColor(word);
+        el.textContent = word;
+        el.title = `${word}: ${count} 次`;
+        container.appendChild(el);
+      });
+
+      const total = sorted.reduce((sum, [,c]) => sum + c, 0);
+      document.getElementById('totalCount').textContent = total;
+      document.getElementById('uniqueCount').textContent = sorted.length;
+    }
+
+    function addWord() {
+      const input = document.getElementById('wordInput');
+      const word = input.value.trim();
+      if (!word) return;
+
+      db.collection('wordcloud_words').add({
+        word: word,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      input.value = '';
+    }
+
+    document.getElementById('wordInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') addWord();
+    });
+
+    function clearAll() {
+      if (!confirm('確定清除所有文字雲資料？')) return;
+      db.collection('wordcloud_words').get().then(snapshot => {
+        const batch = db.batch();
+        snapshot.docs.forEach(doc => batch.delete(doc.ref));
+        return batch.commit();
+      });
+    }
+
+    db.collection('wordcloud_words')
+      .orderBy('timestamp', 'asc')
+      .onSnapshot(snapshot => {
+        wordMap.clear();
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          if (data.word) {
+            const w = data.word.trim();
+            wordMap.set(w, (wordMap.get(w) || 0) + 1);
+          }
+        });
+        renderWordCloud();
+      });
+
+    const baseUrl = window.location.origin + window.location.pathname.replace(/index\.html$/, '');
+    document.getElementById('submitUrl').textContent = baseUrl + 'submit.html';
+    document.getElementById('embedCode').textContent = `<iframe src="${baseUrl}" width="100%" height="600" frameborder="0"></iframe>`;
+  </script>
+</body>
+</html>
