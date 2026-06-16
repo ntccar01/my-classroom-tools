@@ -6,6 +6,7 @@
   <title>班級互動工具</title>
   <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -172,6 +173,35 @@
     }
     .submit-link:hover { background: #2980b9; }
 
+    /* QR Code */
+    .qr-toggle {
+      display: inline-block; margin-top: 10px; padding: 8px 16px;
+      background: #9b59b6; color: white; border: none; border-radius: 6px;
+      font-size: 0.9rem; cursor: pointer; transition: background 0.3s;
+    }
+    .qr-toggle:hover { background: #8e44ad; }
+    .qr-overlay {
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.85); z-index: 100;
+      justify-content: center; align-items: center; flex-direction: column;
+    }
+    .qr-overlay.show { display: flex; }
+    .qr-box {
+      background: #fff; border-radius: 20px; padding: 40px;
+      text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+      position: relative; max-width: 90vw;
+    }
+    .qr-box h2 { color: #1a1a2e; margin-bottom: 8px; font-size: 1.4rem; }
+    .qr-box p { color: #666; margin-bottom: 20px; font-size: 1rem; }
+    #qrcode { display: inline-block; margin-bottom: 20px; }
+    .qr-url { color: #888; font-size: 0.8rem; word-break: break-all; max-width: 300px; margin: 0 auto 15px; }
+    .qr-close {
+      position: absolute; top: 15px; right: 20px; background: none;
+      border: none; font-size: 1.8rem; color: #999; cursor: pointer;
+    }
+    .qr-close:hover { color: #e74c3c; }
+    .qr-hint { color: #555; font-size: 0.9rem; margin-top: 10px; }
+
     @media (max-width: 600px) {
       .header h1 { font-size: 1.4rem; }
       #wordcloud { min-height: 250px; padding: 15px; gap: 8px; }
@@ -184,6 +214,20 @@
     <h1>🎯 班級互動工具</h1>
     <p>文字雲 × 即時投票</p>
     <a class="submit-link" id="submitPageLink" target="_blank">📱 學生互動頁（新分頁開啟）</a>
+    <br>
+    <button class="qr-toggle" onclick="toggleQR()">📷 顯示 QR Code 供掃描</button>
+  </div>
+
+  <!-- QR Code 全螢幕浮層 -->
+  <div class="qr-overlay" id="qrOverlay" onclick="if(event.target===this)toggleQR()">
+    <div class="qr-box">
+      <button class="qr-close" onclick="toggleQR()">✕</button>
+      <h2>📱 掃碼加入互動</h2>
+      <p>用手機掃描下方 QR Code</p>
+      <div id="qrcode"></div>
+      <div class="qr-url" id="qrUrl"></div>
+      <p class="qr-hint">支援文字雲提交 + 即時投票</p>
+    </div>
   </div>
 
   <div class="tabs">
@@ -436,6 +480,27 @@
     document.getElementById('submitUrl').textContent = baseUrl + 'submit.html';
     document.getElementById('embedCode').textContent = `<iframe src="${baseUrl}" width="100%" height="650" frameborder="0"></iframe>`;
     document.getElementById('submitPageLink').href = baseUrl + 'submit.html';
+
+    // ===== QR Code =====
+    const submitUrl = baseUrl + 'submit.html';
+    let qrCreated = false;
+
+    function toggleQR() {
+      const overlay = document.getElementById('qrOverlay');
+      overlay.classList.toggle('show');
+      if (overlay.classList.contains('show') && !qrCreated) {
+        new QRCode(document.getElementById('qrcode'), {
+          text: submitUrl,
+          width: 256,
+          height: 256,
+          colorDark: '#1a1a2e',
+          colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.H
+        });
+        document.getElementById('qrUrl').textContent = submitUrl;
+        qrCreated = true;
+      }
+    }
   </script>
 </body>
 </html>
