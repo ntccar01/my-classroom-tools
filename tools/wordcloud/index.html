@@ -22,23 +22,32 @@
     .header h1 { font-size: 1.8rem; color: #f39c12; }
     .header p { color: #888; font-size: 0.9rem; margin-top: 4px; }
 
-    .tabs {
+    /* 工具列：tabs + QR 按鈕在同一列 */
+    .toolbar {
       display: flex;
       justify-content: center;
+      align-items: center;
+      gap: 8px;
+      margin: 12px auto;
+      max-width: 700px;
+      padding: 0 15px;
+    }
+    .tabs {
+      display: flex;
       gap: 4px;
-      margin: 15px auto;
-      max-width: 400px;
+      flex: 1;
+      max-width: 360px;
     }
     .tab {
       flex: 1;
-      padding: 10px 20px;
+      padding: 10px 16px;
       text-align: center;
       cursor: pointer;
       border: none;
       background: #16213e;
       color: #888;
       font-size: 1rem;
-      border-radius: 8px 8px 0 0;
+      border-radius: 8px;
       transition: all 0.3s;
     }
     .tab.active {
@@ -205,9 +214,10 @@
 
     /* QR Code */
     .qr-toggle {
-      display: inline-block; margin-top: 10px; padding: 8px 16px;
-      background: #9b59b6; color: white; border: none; border-radius: 6px;
+      padding: 10px 16px;
+      background: #9b59b6; color: white; border: none; border-radius: 8px;
       font-size: 0.9rem; cursor: pointer; transition: background 0.3s;
+      white-space: nowrap;
     }
     .qr-toggle:hover { background: #8e44ad; }
     .qr-overlay {
@@ -244,8 +254,6 @@
     <h1>🎯 班級互動工具</h1>
     <p>文字雲 × 即時投票</p>
     <a class="submit-link" id="submitPageLink" target="_blank">📱 學生互動頁（新分頁開啟）</a>
-    <br>
-    <button class="qr-toggle" onclick="toggleQR()">📷 顯示 QR Code 供掃描</button>
   </div>
 
   <!-- QR Code 全螢幕浮層 -->
@@ -260,9 +268,13 @@
     </div>
   </div>
 
-  <div class="tabs">
-    <button class="tab active" onclick="switchTab('wordcloud')">☁️ 文字雲</button>
-    <button class="tab" onclick="switchTab('voting')">📊 即時投票</button>
+  <!-- 工具列：Tab + QR 在同一列 -->
+  <div class="toolbar">
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('wordcloud')">☁️ 文字雲</button>
+      <button class="tab" onclick="switchTab('voting')">📊 即時投票</button>
+    </div>
+    <button class="qr-toggle" onclick="toggleQR()">📷 QR Code</button>
   </div>
 
   <!-- 文字雲面板 -->
