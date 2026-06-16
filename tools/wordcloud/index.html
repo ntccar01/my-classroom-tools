@@ -159,6 +159,36 @@
 
     .no-poll { color: #666; text-align: center; padding: 40px; }
 
+    /* 圖片題目 */
+    .paste-zone {
+      border: 2px dashed #555; border-radius: 10px; padding: 20px;
+      text-align: center; margin-bottom: 12px; transition: all 0.3s;
+      cursor: pointer; color: #888; position: relative;
+    }
+    .paste-zone:hover, .paste-zone.dragover {
+      border-color: #f39c12; color: #f39c12; background: rgba(243,156,18,0.05);
+    }
+    .paste-zone .hint { font-size: 0.85rem; margin-top: 6px; }
+    .paste-zone .hint kbd {
+      background: #333; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem;
+      border: 1px solid #555;
+    }
+    .paste-preview {
+      display: none; position: relative; margin-bottom: 12px;
+      border-radius: 8px; overflow: hidden; background: #0a0a1a;
+    }
+    .paste-preview img {
+      width: 100%; max-height: 300px; object-fit: contain; display: block;
+      border-radius: 8px;
+    }
+    .paste-preview .remove-img {
+      position: absolute; top: 8px; right: 8px;
+      background: rgba(231,76,60,0.9); color: white; border: none;
+      border-radius: 50%; width: 30px; height: 30px; cursor: pointer;
+      font-size: 1rem; display: flex; align-items: center; justify-content: center;
+    }
+    .paste-preview .remove-img:hover { background: #e74c3c; }
+
     .embed-note {
       margin: 20px auto; padding: 12px 20px; background: #0f3460;
       border-radius: 8px; font-size: 0.8rem; color: #aaa;
@@ -255,7 +285,16 @@
   <div id="panel-voting" class="panel">
     <div class="poll-setup" id="pollSetup">
       <h3>⚙️ 設定投票</h3>
-      <input type="text" id="pollQuestion" placeholder="請輸入投票問題..." value="你最喜歡哪個主題？">
+      <div class="paste-zone" id="pasteZone" onclick="document.getElementById('pasteInput').click()">
+        <div>📋 貼上題目圖片</div>
+        <div class="hint">按 <kbd>Ctrl</kbd> + <kbd>V</kbd> 貼上截圖，或點此選擇檔案</div>
+        <input type="file" id="pasteInput" accept="image/*" style="display:none" onchange="handleFileSelect(event)">
+      </div>
+      <div class="paste-preview" id="pastePreview">
+        <img id="previewImg" src="">
+        <button class="remove-img" onclick="removeImage()">✕</button>
+      </div>
+      <input type="text" id="pollQuestion" placeholder="請輸入投票問題（可與圖片併用）..." value="你最喜歡哪個主題？">
       <div id="optionsContainer">
         <div class="option-row">
           <input type="text" class="opt-input" placeholder="選項 1" value="選項A">
@@ -370,6 +409,77 @@
     let currentPollId = null;
     let pollListener = null;
     let votesListener = null;
+    let pollImageData = null; // base64 圖片
+
+    // --- 圖片貼上功能 ---
+    const pasteZone = document.getElementById('pasteZone');
+    const pastePreview = document.getElementById('pastePreview');
+    const previewImg = document.getElementById('previewImg');
+
+    document.addEventListener('paste', function(e) {
+      // 只在投票面板啟用時處理
+      if (!document.getElementById('panel-voting').classList.contains('active')) return;
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          e.preventDefault();
+          const blob = item.getAsFile();
+          compressAndPreview(blob);
+          return;
+        }
+      }
+    });
+
+    pasteZone.addEventListener('dragover', function(e) {
+      e.preventDefault(); this.classList.add('dragover');
+    });
+    pasteZone.addEventListener('dragleave', function() {
+      this.classList.remove('dragover');
+    });
+    pasteZone.addEventListener('drop', function(e) {
+      e.preventDefault(); this.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith('image/')) compressAndPreview(file);
+    });
+
+    function handleFileSelect(e) {
+      const file = e.target.files[0];
+      if (file) compressAndPreview(file);
+    }
+
+    function compressAndPreview(file) {
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const MAX_W = 800, MAX_H = 600;
+          let w = img.width, h = img.height;
+          if (w > MAX_W || h > MAX_H) {
+            const ratio = Math.min(MAX_W / w, MAX_H / h);
+            w = Math.round(w * ratio);
+            h = Math.round(h * ratio);
+          }
+          canvas.width = w;
+          canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          pollImageData = canvas.toDataURL('image/jpeg', 0.7);
+          previewImg.src = pollImageData;
+          pastePreview.style.display = 'block';
+          pasteZone.style.display = 'none';
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function removeImage() {
+      pollImageData = null;
+      pastePreview.style.display = 'none';
+      pasteZone.style.display = 'block';
+      document.getElementById('pasteInput').value = '';
+    }
 
     function addOption() {
       const container = document.getElementById('optionsContainer');
@@ -391,12 +501,18 @@
       const question = document.getElementById('pollQuestion').value.trim();
       const inputs = document.querySelectorAll('.opt-input');
       const options = [...inputs].map(i => i.value.trim()).filter(v => v);
-      if (!question || options.length < 2) { alert('請輸入問題和至少 2 個選項'); return; }
+      if (!question && !pollImageData) { alert('請輸入問題或貼上圖片'); return; }
+      if (options.length < 2) { alert('請至少 2 個選項'); return; }
 
-      db.collection('active_poll').doc('current').set({
-        question, options, active: true,
+      const pollData = {
+        question: question || '',
+        options, active: true,
         created_at: firebase.firestore.FieldValue.serverTimestamp()
-      });
+      };
+      if (pollImageData) pollData.image = pollImageData;
+
+      db.collection('active_poll').doc('current').set(pollData);
+      // 貼上圖片後不清除，讓投票期間持續顯示
     }
 
     function stopPoll() {
@@ -405,10 +521,21 @@
 
     const BAR_COLORS = ['#3498db','#e74c3c','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e67e22','#f1c40f'];
 
-    function renderVoteResults(question, options, votesMap) {
+    function renderVoteResults(question, options, votesMap, imageData) {
       document.getElementById('pollResults').style.display = 'block';
       document.getElementById('noPollMsg').style.display = 'none';
-      document.getElementById('activeQuestion').textContent = '「' + question + '」';
+      document.getElementById('activeQuestion').textContent = question ? '「' + question + '」' : '';
+
+      // 顯示題目圖片
+      const existingImg = document.getElementById('pollQuestionImg');
+      if (existingImg) existingImg.remove();
+      if (imageData) {
+        const img = document.createElement('img');
+        img.id = 'pollQuestionImg';
+        img.src = imageData;
+        img.style.cssText = 'max-width:100%;max-height:250px;border-radius:8px;margin-bottom:15px;display:block;margin-left:auto;margin-right:auto;';
+        document.getElementById('activeQuestion').after(img);
+      }
 
       const total = Object.values(votesMap).reduce((s,v) => s+v, 0);
       document.getElementById('voteTotalCount').textContent = total;
@@ -459,7 +586,7 @@
                 const opt = v.data().option;
                 votesMap[opt] = (votesMap[opt]||0) + 1;
               });
-              renderVoteResults(data.question, data.options, votesMap);
+              renderVoteResults(data.question, data.options, votesMap, data.image);
             });
         } else {
           currentPollId = null;
